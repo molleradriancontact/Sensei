@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-900">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sensei - Esports Companion</title>
+    <!-- 1. Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 2. Load Chart.js for the dashboard -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+        // Custom Tailwind Config (if needed)
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'inter': ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for a cleaner, modern look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937; /* gray-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563; /* gray-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; /* gray-500 */
+        }
+        /* Style for the calendar */
+        .calendar-day {
+            transition: background-color 0.2s;
+        }
+        .calendar-day:not(.other-month):hover {
+            background-color: #374151; /* gray-700 */
+        }
+        .calendar-day.other-month {
+            color: #4b5563; /* gray-600 */
+        }
+        .event-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-left: 2px;
+        }
+        /* Ensure charts are responsive */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="h-full font-inter text-gray-200">
+    <div class="flex flex-col h-screen">
+        <!-- Header -->
+        <header class="bg-gray-800 shadow-lg z-20">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center">
+                        <svg class="h-8 w-8 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18c-2.305 0-4.408.867-6 2.292m0-14.25v14.25" />
+                        </svg>
+                        <span class="text-xl font-bold ml-2 text-white">Sensei</span>
+                    </div>
+                    <div id="auth-status" class="text-sm text-gray-400">Connecting...</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex overflow-hidden">
+            <!-- Navigation Sidebar -->
+            <nav class="w-56 bg-gray-800 overflow-y-auto flex-shrink-0" id="main-nav">
+                <ul class="py-4">
+                    <!-- Nav items will be injected by JavaScript -->
+                </ul>
+            </nav>
+
+            <!-- Page Content -->
+            <main class="flex-1 overflow-y-auto p-6 md:p-8 lg:p-12 bg-gray-900">
+                <div id="page-content">
+                    <!-- Content for tabs will be injected by JavaScript -->
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modals (hidden by default) -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-black bg-opacity-75 hidden z-40"></div>
+    
+    <!-- Add Event Modal -->
+    <div id="add-event-modal" class="fixed inset-0 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-md">
+            <h3 class="text-lg font-medium leading-6 text-white mb-4">Add New Event</h3>
+            <form id="add-event-form">
+                <div class="space-y-4">
+                    <div>
+                        <label for="event-title" class="block text-sm font-medium text-gray-300">Title</label>
+                        <input type="text" id="event-title" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white focus:ring-indigo-500 focus:border-indigo-500" required>
+                    </div>
+                    <div>
+                        <label for="event-date" class="block text-sm font-medium text-gray-300">Date</label>
+                        <input type="date" id="event-date" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white focus:ring-indigo-500 focus:border-indigo-500" required>
+                    </div>
+                    <div>
+                        <label for="event-type" class="block text-sm font-medium text-gray-300">Type</label>
+                        <select id="event-type" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="training">Training</option>
+                            <option value="tournament">Tournament</option>
+                            <option value="vod-review">VOD Review</option>
+                            <option value="personal">Personal</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" id="cancel-event-modal" class="bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded-md">Cancel</button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white py-2 px-4 rounded-md">Add Event</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Social Modal -->
+    <div id="add-social-modal" class="fixed inset-0 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-md">
+            <h3 class="text-lg font-medium leading-6 text-white mb-4">Add Social Account</h3>
+            <form id="add-social-form">
+                <div class="space-y-4">
+                    <div>
+                        <label for="social-platform" class="block text-sm font-medium text-gray-300">Platform</label>
+                        <select id="social-platform" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="Twitch">Twitch</option>
+                            <option value="X">X (Twitter)</option>
+                            <option value="YouTube">YouTube</option>
+                            <option value="Discord">Discord</option>
+                            <option value="Steam">Steam</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="social-username" class="block text-sm font-medium text-gray-300">Username / Handle</label>
+                        <input type="text" id="social-username" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white focus:ring-indigo-500 focus:border-indigo-500" placeholder="YourUsername" required>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" id="cancel-social-modal" class="bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded-md">Cancel</button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white py-2 px-4 rounded-md">Add Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- AI Meta Modal -->
+    <div id="ai-meta-modal" class="fixed inset-0 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-lg">
+            <h3 id="ai-meta-title" class="text-lg font-medium leading-6 text-white mb-4">Analyzing Meta...</h3>
+            <div id="ai-meta-content" class="text-gray-300 max-h-96 overflow-y-auto">
+                <!-- AI content will be injected here -->
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button type="button" id="close-ai-meta-modal" class="bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded-md">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add VOD Modal -->
+    <div id="add-vod-modal" class="fixed inset-0 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-md">
+            <h3 class="text-lg font-medium leading-6 text-white mb-4">Add VOD Clip</h3>
+            <form id="add-vod-form">
+                <div class="space-y-4">
+                    <div>
+                        <label for="vod-url" class="block text-sm font-medium text-gray-300">Video URL (YouTube)</label>
+                        <input type="url" id="vod-url" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white focus:ring-indigo-500 focus:border-indigo-500" placeholder="https://www.youtube.com/watch?v=..." required>
+                    </div>
+                    <div>
+                        <label for="vod-title" class="block text-sm font-medium text-gray-300">Title</label>
+                        <input type="text" id="vod-title" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white focus:ring-indigo-500 focus:border-indigo-500" placeholder="My Best Aerial Goal" required>
+                    </div>
+                    <div>
+                        <label for="vod-game" class="block text-sm font-medium text-gray-300">Game</label>
+                        <select id="vod-game" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white focus:ring-indigo-500 focus:border-indigo-500">
+                            <!-- Game options will be injected by JS -->
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" id="cancel-vod-modal" class="bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded-md">Cancel</button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white py-2 px-4 rounded-md">Add Clip</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- AI VOD Feedback Modal -->
+    <div id="ai-vod-modal" class="fixed inset-0 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-lg">
+            <h3 class="text-lg font-medium leading-6 text-white mb-4">✨ AI Coach Feedback</h3>
+            <div id="ai-vod-content" class="text-gray-300 max-h-96 overflow-y-auto">
+                <!-- AI feedback will be injected here -->
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button type="button" id="close-ai-vod-modal" class="bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded-md">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Social Post Modal -->
+    <div id="ai-social-modal" class="fixed inset-0 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-xl">
+            <h3 class="text-lg font-medium leading-6 text-white mb-4">✨ AI Social Post Generator</h3>
+            <div id="ai-social-content" class="text-gray-300 max-h-[60vh] overflow-y-auto space-y-4">
+                <!-- AI social posts will be injected here -->
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button type="button" id="close-ai-social-modal" class="bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded-md">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start Practice Session Modal -->
+    <div id="start-session-modal" class="fixed inset-0 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-md">
+            <h3 class="text-lg font-medium leading-6 text-white mb-4">Start New Practice Session</h3>
+            <form id="start-session-form">
+                <div class="space-y-4">
+                    <div>
+                        <label for="session-game" class="block text-sm font-medium text-gray-300">Game</label>
+                        <select id="session-game" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white focus:ring-indigo-500 focus:border-indigo-500">
+                            <!-- Game options will be injected by JS -->
+                        </select>
+                    </div>
+                    <div>
+                        <label for="session-mode" class="block text-sm font-medium text-gray-300">Mode</label>
+                        <input type="text" id="session-mode" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white focus:ring-indigo-500 focus:border-indigo-500" placeholder="Ranked 2v2, Aim Trainer, etc." required>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" id="cancel-session-modal" class="bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded-md">Cancel</button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white py-2 px-4 rounded-md">Start Session</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- 3. Load Firebase SDKs (Modular) -->
+    <script type="module">
+        // These are placeholder stubs. The real Firebase config and auth token
+        // will be provided by the environment this app is running in.
+        // We use these checks to fall back to "demo mode" if Firebase isn't available.
+        
+        // This simulates the firebase config JSON string
+        // In a real deployment, this would be populated by the environment.
+        const __firebase_config_str = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
+        
+        // This simulates the auth token string
+        // In a real deployment, this would be populated by the environment.
+        const __auth_token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Export these to be used in app.js
+        export { __firebase_config_str, __auth_token };
+    </script>
+    
+    <!-- 4. Load the main application JavaScript file -->
+    <!-- 'defer' ensures it runs after the HTML is parsed -->
+    <!-- 'type="module"' allows it to use import/export -->
+    <script src="app.js" type="module" defer></script>
+</body>
+</html>
