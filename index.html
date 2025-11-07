@@ -255,21 +255,20 @@
 
 
     <!-- 3. Load Firebase SDKs (Modular) -->
+    <!-- **** THIS IS THE FIX **** -->
+    <!-- We attach the config to the global 'window' object so app.js can see it without a broken import. -->
     <script type="module">
         // These are placeholder stubs. The real Firebase config and auth token
         // will be provided by the environment this app is running in.
         // We use these checks to fall back to "demo mode" if Firebase isn't available.
         
         // This simulates the firebase config JSON string
-        // In a real deployment, this would be populated by the environment.
-        const __firebase_config_str = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
+        window.__firebase_config_str = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
         
         // This simulates the auth token string
-        // In a real deployment, this would be populated by the environment.
-        const __auth_token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        window.__auth_token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // Export these to be used in app.js
-        export { __firebase_config_str, __auth_token };
+        // We DON'T export anything here anymore.
     </script>
     
     <!-- 4. Load the main application JavaScript file -->

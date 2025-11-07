@@ -1,5 +1,7 @@
-// Imports from the HTML file's inline module script
-import { __firebase_config_str, __auth_token } from './index.html';
+// **** THIS IS THE FIX ****
+// Read config from the global window object instead of a broken import
+const __firebase_config_str = window.__firebase_config_str || '{}';
+const __auth_token = window.__auth_token || null;
 
 // Import Firebase SDKs
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -1734,7 +1736,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (cancelVodModalBtn) cancelVodModalBtn.onclick = () => hideModal("add-vod-modal");
     
     const closeAiVodModalBtn = document.getElementById("close-ai-vod-modal");
-    if (closeAiVodModalBtn) closeAiVodModalBtn.onclick = () => hideModal("ai-vod-modal");
+    if (closeAiVodModalBtn) closeAiVodModalBtn.onclick = ()d => hideModal("ai-vod-modal");
     
     const closeAiSocialModalBtn = document.getElementById("close-ai-social-modal");
     if (closeAiSocialModalBtn) closeAiSocialModalBtn.onclick = () => hideModal("ai-social-modal");
