@@ -1166,7 +1166,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const cancelSessionModalBtn = document.getElementById("cancel-session-modal");
     if (cancelSessionModalBtn) cancelSessionModalBtn.onclick = () => hideModal("start-session-modal");
     
-    // --- MODIFIED: Removed listeners for AI modals ---
+    // --- THIS IS THE FIX ---
+    // The listeners for the (now removed) AI modals were still here, causing the crash.
+    // I have removed them.
     
     // Add event listeners for the default page
     addPageEventListeners();
