@@ -1,5 +1,4 @@
-// **** THIS IS THE FIX ****
-// Read config from the global window object instead of a broken import
+// Read config from the global window object
 const __firebase_config_str = window.__firebase_config_str || '{}';
 const __auth_token = window.__auth_token || null;
 
@@ -72,16 +71,13 @@ const games = [
     { id: "marvelSnap", name: "Marvel Snap", icon: "🃏" }
 ];
 
+// --- MODIFIED: Removed all AI tabs ---
 const navItems = [
     { id: "calendar", name: "Calendar", icon: "📅" },
     { id: "profile", name: "Profile", icon: "👤" },
-    { id: "news", name: "News Feed", icon: "📰" },
     { id: "games", name: "My Games", icon: "🎮" },
-    { id: "training", name: "✨ Training AI", icon: "🤖" },
-    { id: "tournaments", name: "Find Tournaments", icon: "🏆" },
     { id: "vod", name: "VOD Library", icon: "🎬" },
-    { id: "tracker", name: "Tracker", icon: "📊" },
-    { id: "team", name: "Team Finder", icon: "🤝" }
+    { id: "tracker", name: "Tracker", icon: "📊" }
 ];
 
 let currentTab = "calendar";
@@ -120,78 +116,7 @@ function getYouTubeEmbedUrl(url) {
     return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
 }
 
-function copyToClipboard(text, button) {
-    const tempInput = document.createElement("textarea");
-    tempInput.style.position = "absolute";
-    tempInput.style.left = "-9999px";
-    tempInput.value = text;
-    document.body.appendChild(tempInput);
-    tempInput.select();
-    try {
-        document.execCommand('copy');
-        const originalText = button.textContent;
-        button.textContent = "Copied!";
-        setTimeout(() => {
-            button.textContent = originalText;
-        }, 1500);
-    } catch (err) {
-        console.error('Failed to copy text: ', err);
-    }
-    document.body.removeChild(tempInput);
-}
-
-// --- FIREBASE API (GEMINI) FUNCTIONS --- //
-async function callGeminiAPI(prompt, useSearch = false, isJson = false) {
-    const apiKey = ""; // Will be auto-provided by the environment
-    const model = 'gemini-2.5-flash-preview-09-2025';
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-    const payload = {
-        contents: [{ parts: [{ text: prompt }] }],
-    };
-
-    if (useSearch) {
-        payload.tools = [{ "google_search": {} }];
-    }
-    
-    if (isJson) {
-        payload.generationConfig = {
-            responseMimeType: "application/json",
-        };
-        // We'd also include responseSchema here if we had a fixed one,
-        // but for dynamic content, we'll rely on a strong prompt.
-    }
-
-    try {
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.statusText}`);
-        }
-
-        const result = await response.json();
-        
-        if (result.candidates && result.candidates[0].content) {
-            return result.candidates[0].content.parts[0].text;
-        } else {
-            console.warn("No valid candidate in API response:", result);
-            if (result.promptFeedback) {
-                console.warn("Prompt feedback:", result.promptFeedback);
-                return `The request was blocked due to: ${result.promptFeedback.blockReason}`;
-            }
-            return "Error: Received no content from API.";
-        }
-
-    } catch (error) {
-        console.error("Error calling Gemini API:", error);
-        return `Error: Could not fetch response. ${error.message}`;
-    }
-}
-
+// --- REMOVED: all `callGeminiAPI` functions ---
 
 // --- FIREBASE INITIALIZATION --- //
 async function initializeFirebase() {
@@ -394,7 +319,6 @@ async function handleAddEvent(e) {
             await addDoc(collection(db, collections.events), newEvent);
         } catch (error) {
             console.error("Error adding event:", error);
-            // Use a custom modal for errors instead of alert()
         }
     } else {
         events.push({ id: `demo-${Date.now()}`, ...newEvent });
@@ -556,137 +480,6 @@ async function handleSaveProfile(e) {
     }, 1500);
 }
 
-// --- NEWS FEED LOGIC --- //
-async function handleFetchNews(e) {
-    const gameId = document.getElementById("news-game-select").value;
-    const button = e.target;
-    const newsFeed = document.getElementById("news-feed-content");
-    
-    button.disabled = true;
-    button.textContent = "Fetching...";
-    newsFeed.innerHTML = `<p>Loading news...</p>`;
-
-    const gameName = gameId === "all" ? "esports" : getGameNameById(gameId);
-    
-    const prompt = `Find the top 3 latest news articles, patch notes, or esports updates for ${gameName}. For each, provide a title, a short summary, and the source URL.`;
-    
-    const response = await callGeminiAPI(prompt, true);
-    
-    // Simple text parsing (this is a weak point, AI JSON response would be better)
-    // For now, we'll just display the raw text formatted.
-    newsFeed.innerHTML = response.split('\n').map(line => {
-        if (line.startsWith('*') || line.startsWith('-')) {
-            return `<p class="mb-2">${line}</p>`;
-        }
-        if (line.includes('http')) {
-             return `<a href="${line}" target="_blank" class="text-indigo-400 hover:underline">${line}</a>`;
-        }
-        return `<p>${line}</p>`;
-    }).join('');
-
-    button.disabled = false;
-    button.textContent = "Fetch Latest News";
-}
-
-// --- MY GAMES (META) LOGIC --- //
-async function handleAnalyzeMeta(gameId) {
-    const gameName = getGameNameById(gameId);
-    const modal = document.getElementById("ai-meta-modal");
-    const title = document.getElementById("ai-meta-title");
-    const content = document.getElementById("ai-meta-content");
-
-    title.textContent = `Analyzing ${gameName} Meta...`;
-    content.innerHTML = `<div class="flex justify-center items-center h-24"><div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-400"></div></div>`;
-    showModal("ai-meta-modal");
-
-    const prompt = `What is the current competitive meta for the game ${gameName}? Provide a concise, bulleted summary for an aspiring pro player. Include top strategies, characters, or items if applicable.`;
-    
-    const response = await callGeminiAPI(prompt, true);
-    
-    content.innerHTML = response.replace(/\n/g, '<br>').replace(/\*(.*?):/g, '<br><strong class="text-white">$1:</strong>');
-}
-
-// --- TRAINING AI LOGIC --- //
-async function handleGeneratePlan(e) {
-    e.preventDefault();
-    const gameId = document.getElementById("training-game-select").value;
-    const goal = document.getElementById("training-goal").value;
-    const output = document.getElementById("training-plan-output");
-    const button = e.target.querySelector('button[type="submit"]');
-
-    if (!goal) {
-        output.innerHTML = `<p class="text-red-400">Please enter a goal.</p>`;
-        return;
-    }
-
-    button.disabled = true;
-    button.textContent = "Generating...";
-    output.innerHTML = `<div class="flex justify-center items-center h-24"><div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-400"></div></div>`;
-    
-    const gameName = getGameNameById(gameId);
-    const prompt = `I am an aspiring pro esports player for ${gameName}. My goal is to "${goal}".
-Act as a world-class esports coach. Create a detailed, step-by-step 7-day training plan to help me achieve this specific goal.
-Format the response as a clear, actionable plan. Use headings for each day.`;
-
-    const response = await callGeminiAPI(prompt, false);
-
-    output.innerHTML = response
-        .replace(/\n/g, '<br>')
-        .replace(/Day \d+:/g, (match) => `<h4 class="text-lg font-semibold text-white mt-4">${match}</h4>`)
-        .replace(/(\*|\-)\s(.*?):/g, '<br><strong class="text-gray-100">$2:</strong>');
-
-    button.disabled = false;
-    button.textContent = "Generate Plan";
-}
-
-// --- FIND TOURNAMENTS LOGIC --- //
-async function handleFindTournaments(e) {
-    const gameId = document.getElementById("tournament-game-select").value;
-    const gameName = getGameNameById(gameId);
-    const button = e.target;
-    const output = document.getElementById("tournament-results");
-
-    button.disabled = true;
-    button.textContent = "Searching...";
-    output.innerHTML = `<div class="flex justify-center items-center h-24"><div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-400"></div></div>`;
-    
-    const prompt = `Find 3 upcoming, open-registration tournaments for ${gameName}. 
-For each tournament, provide its name, date, region, and a direct URL to the registration or details page.
-Provide this as a JSON array, like this:
-[
-  {"name": "Tournament Name", "date": "YYYY-MM-DD or TBD", "region": "Region (e.g., NA, EU, Global)", "url": "https://..."},
-  {"name": "Another Tourney", "date": "Month Day, YYYY", "region": "Global", "url": "https://..."}
-]
-If you cannot find any open tournaments, return an empty array [].`;
-
-    let response = await callGeminiAPI(prompt, true, true);
-    
-    // Clean the JSON response
-    response = response.replace(/```json/g, '').replace(/```/g, '').trim();
-    
-    try {
-        const tournaments = JSON.parse(response);
-        if (tournaments.length === 0) {
-            output.innerHTML = `<p class="text-gray-400">No open tournaments found for ${gameName} at the moment.</p>`;
-        } else {
-            output.innerHTML = tournaments.map(t => `
-                <div class="bg-gray-800 p-4 rounded-lg shadow-md">
-                    <h4 class="text-lg font-semibold text-white">${t.name}</h4>
-                    <p class="text-gray-300"><strong>Date:</strong> ${t.date}</p>
-                    <p class="text-gray-300"><strong>Region:</strong> ${t.region}</p>
-                    <a href="${t.url}" target="_blank" class="inline-block mt-3 bg-indigo-600 hover:bg-indigo-500 text-white py-2 px-4 rounded-md text-sm">View & Register</a>
-                </div>
-            `).join('');
-        }
-    } catch (error) {
-        console.error("Failed to parse JSON response:", error, "Response was:", response);
-        output.innerHTML = `<p class="text-red-400">Error: Could not parse tournament data from the API.</p>`;
-    }
-
-    button.disabled = false;
-    button.textContent = "Find Tournaments";
-}
-
 // --- VOD LIBRARY LOGIC --- //
 function renderVODLibrary() {
     const listContainer = document.getElementById("vod-clip-list");
@@ -738,7 +531,6 @@ async function handleAddVOD(e) {
     
     const embedUrl = getYouTubeEmbedUrl(url);
     if (!embedUrl) {
-        // Use a custom modal or inline error message instead of alert()
         console.error("Invalid YouTube URL.");
         return;
     }
@@ -768,9 +560,6 @@ async function handleAddVOD(e) {
 }
 
 async function handleDeleteVOD(id) {
-    // Replace confirm() with a custom modal in a real app
-    // if (!confirm("Are you sure you want to delete this clip?")) return;
-
     if (isFirebaseInitialized) {
         try {
             await deleteDoc(doc(db, collections.vodLibrary, id));
@@ -837,105 +626,6 @@ async function handleVODNotesChange(e) {
 
     }, 500); // 500ms delay
 }
-
-async function handleAIVODFeedback() {
-    const clipId = document.getElementById('vod-review-station').dataset.currentClipId;
-    if (!clipId) {
-        console.warn("No clip loaded.");
-        return;
-    }
-    
-    const clip = vodLibrary.find(c => c.id === clipId);
-    if (!clip || !clip.notes) {
-        console.warn("No notes found for this clip.");
-        return;
-    }
-    
-    const modal = document.getElementById("ai-vod-modal");
-    const content = document.getElementById("ai-vod-content");
-
-    content.innerHTML = `<div class="flex justify-center items-center h-24"><div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-400"></div></div>`;
-    showModal("ai-vod-modal");
-    
-    const prompt = `Act as an expert esports coach. A player is reviewing a VOD clip from ${getGameNameById(clip.game)}.
-The clip is titled: "${clip.title}"
-The player's own analysis is:
-"${clip.notes}"
-
-Based *only* on the player's notes, provide constructive feedback. What did they observe correctly? What might they be missing? Ask one or two guiding questions to help them think deeper.`;
-
-    const response = await callGeminiAPI(prompt, false);
-    content.innerHTML = response.replace(/\n/g, '<br>');
-}
-
-async function handleAISocialPost() {
-    const clipId = document.getElementById('vod-review-station').dataset.currentClipId;
-    if (!clipId) {
-        console.warn("No clip loaded.");
-        return;
-    }
-    
-    const clip = vodLibrary.find(c => c.id === clipId);
-    if (!clip || !clip.notes) {
-        console.warn("No notes found for this clip.");
-        return;
-    }
-    
-    const modal = document.getElementById("ai-social-modal");
-    const content = document.getElementById("ai-social-content");
-
-    content.innerHTML = `<div class="flex justify-center items-center h-24"><div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-400"></div></div>`;
-    showModal("ai-social-modal");
-    
-    const prompt = `Act as a social media manager for an aspiring pro ${getGameNameById(clip.game)} player.
-The player just analyzed a clip titled "${clip.title}" and wrote these notes: "${clip.notes}".
-
-Based on this, generate two pieces of content:
-1.  An engaging, short Tweet (under 280 chars) that shares a key insight.
-2.  A slightly longer, helpful YouTube description for the clip.
-
-Format the output clearly with "### Tweet" and "### YouTube Description" as headings.`;
-
-    const response = await callGeminiAPI(prompt, false);
-    
-    const parts = response.split(/### (Tweet|YouTube Description)/);
-    let html = '';
-    
-    if (parts.length > 2) {
-        const tweet = parts[2].replace(':', '').trim();
-        const youtube = parts.length > 4 ? parts[4].replace(':', '').trim() : "Could not generate description.";
-
-        html = `
-            <div>
-                <h4 class="text-lg font-semibold text-white mb-2">X / Tweet</h4>
-                <div class="relative bg-gray-700 p-4 rounded-lg">
-                    <button class="copy-btn absolute top-2 right-2 bg-gray-600 hover:bg-gray-500 text-xs py-1 px-2 rounded">Copy</button>
-                    <p class="social-text whitespace-pre-wrap">${tweet}</p>
-                </div>
-            </div>
-            <div>
-                <h4 class="text-lg font-semibold text-white mb-2 mt-4">YouTube Description</h4>
-                <div class="relative bg-gray-700 p-4 rounded-lg">
-                    <button class="copy-btn absolute top-2 right-2 bg-gray-600 hover:bg-gray-500 text-xs py-1 px-2 rounded">Copy</button>
-                    <p class="social-text whitespace-pre-wrap">${youtube}</p>
-                </div>
-            </div>
-        `;
-    } else {
-        html = `<p>${response.replace(/\n/g, '<br>')}</p>`; // Fallback
-    }
-
-    content.innerHTML = html;
-    
-    // Add copy listeners
-    content.querySelectorAll('.copy-btn').forEach(button => {
-        button.onclick = () => {
-            const textToCopy = button.nextElementSibling.textContent;
-            copyToClipboard(textToCopy, button);
-        };
-    });
-}
-
 
 // --- TRACKER LOGIC --- //
 function renderTracker() {
@@ -1079,7 +769,6 @@ function renderTrackerDashboard() {
     `;
     
     // Prepare chart data
-    // We want win % over time. Let's do it by session.
     const chartLabels = [];
     const chartData = [];
     
@@ -1142,100 +831,6 @@ function renderTrackerDashboard() {
     }
 }
 
-async function handleRefreshStats() {
-    const button = document.getElementById("refresh-stats-btn");
-    const gameId = 'rocketLeague'; // Hardcoded for our simulation
-    const gameName = getGameNameById(gameId);
-    
-    const username = userProfile.gameAccounts?.[gameId];
-    if (!username) {
-        console.warn("No Rocket League username set in profile.");
-        // We could show a custom error modal here
-        return;
-    }
-    
-    button.disabled = true;
-    button.textContent = "Refreshing...";
-
-    // --- THIS IS THE SIMULATION ---
-    // In a real app, this would call a Cloud Function.
-    // Here, we just simulate the function's logic locally.
-    const simulatedWins = Math.floor(Math.random() * 5) + 3; // 3-7 wins
-    const simulatedLosses = Math.floor(Math.random() * 4) + 1; // 1-4 losses
-    const newSession = {
-        game: gameId,
-        mode: "Ranked (Auto-Tracked)",
-        wins: simulatedWins,
-        losses: simulatedLosses,
-        notes: [
-            { time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }), text: `Auto-tracked session for ${username}` }
-        ],
-        finishedAt: isFirebaseInitialized ? serverTimestamp() : new Date().toISOString()
-    };
-
-    if (isFirebaseInitialized) {
-        try {
-            await addDoc(collection(db, collections.performanceLog), newSession);
-        } catch (error) {
-            console.error("Error saving simulated session:", error);
-        }
-    } else {
-        performanceLog.unshift({ id: `demo-${Date.now()}`, ...newSession });
-        renderTracker(); // Manually re-render in demo mode
-    }
-    // In live mode, onSnapshot will handle the re-render
-    
-    button.disabled = false;
-    button.textContent = "Simulate Auto-Tracker (Refresh Stats)";
-}
-
-// --- TEAM FINDER LOGIC --- //
-async function handleGenerateLFGPost(e) {
-    const gameId = document.getElementById("team-game-select").value;
-    const gameName = getGameNameById(gameId);
-    const button = e.target;
-    const output = document.getElementById("lfg-post-output");
-    
-    const card = userProfile.playerCard?.[gameId];
-    if (!card || !card.role || !card.style || !card.availability) {
-        output.innerHTML = `<p class="text-red-400">Please fill out your "Pro-Am Player Card" on the Profile tab for ${gameName} first.</p>`;
-        return;
-    }
-
-    button.disabled = true;
-    button.textContent = "Generating...";
-    output.innerHTML = `<div class="flex justify-center items-center h-24"><div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-400"></div></div>`;
-
-    const prompt = `Act as an esports team recruiter. I need a "Looking for Group" (LFG) post for ${gameName}.
-Base it on my player card:
-- Role: ${card.role}
-- Playstyle: ${card.style}
-- Availability: ${card.availability}
-- My Username: ${userProfile.gameAccounts?.[gameId] || 'MyUsername'}
-
-Draft a clear, professional, and confident post for me to use on Discord or Reddit. Include a call to action.`;
-
-    const response = await callGeminiAPI(prompt, false);
-    
-    output.innerHTML = `
-        <div class="relative bg-gray-700 p-4 rounded-lg">
-            <button id="copy-lfg-btn" class="absolute top-2 right-2 bg-gray-600 hover:bg-gray-500 text-xs py-1 px-2 rounded">Copy</button>
-            <p class="whitespace-pre-wrap">${response}</p>
-        </div>
-    `;
-    
-    const copyBtn = document.getElementById('copy-lfg-btn');
-    if (copyBtn) {
-        copyBtn.onclick = (e) => {
-            copyToClipboard(response, e.target);
-        };
-    }
-
-    button.disabled = false;
-    button.textContent = "✨ Generate LFG Post";
-}
-
-
 // --- APP RENDERING & NAVIGATION --- //
 function renderApp() {
     const nav = document.getElementById("main-nav");
@@ -1268,7 +863,6 @@ function renderApp() {
     populateGameSelects();
     
     // 4. Run the specific render function for the active tab
-    // This fills the content with data
     switch (currentTab) {
         case "calendar":
             renderCalendar();
@@ -1282,7 +876,6 @@ function renderApp() {
         case "vod":
             renderVODLibrary();
             break;
-        // Other tabs are static or load on-demand
     }
     
     // 5. (Re)add event listeners for the new page content
@@ -1347,7 +940,7 @@ function getPageContent(tabId) {
                     <!-- Player Card -->
                     <div class="bg-gray-800 rounded-lg shadow-xl p-6 lg:col-span-2">
                         <h2 class="text-xl font-semibold text-white mb-4">Pro-Am Player Card</h2>
-                        <p class="text-gray-400 mb-4 text-sm">Define your playstyle and availability to help the Team Finder AI craft better LFG posts for you.</p>
+                        <p class="text-gray-400 mb-4 text-sm">Define your playstyle and availability to help you find teammates.</p>
                         <form id="profile-player-card-form">
                             <div id="player-card-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <!-- Player card inputs will be injected here -->
@@ -1360,77 +953,19 @@ function getPageContent(tabId) {
                     <button id="save-profile-btn" class="bg-green-600 hover:bg-green-500 text-white py-2 px-6 rounded-md">Save Profile</button>
                 </div>
             `;
-        case "news":
-            return `
-                <h1 class="text-3xl font-bold text-white mb-6">News Feed</h1>
-                <div class="bg-gray-800 rounded-lg shadow-xl p-6">
-                    <div class="flex items-center space-x-4 mb-6">
-                        <select id="news-game-select" class="flex-1 bg-gray-700 border-gray-600 rounded-md shadow-sm text-white focus:ring-indigo-500 focus:border-indigo-500">
-                            <option value="all">All Games</option>
-                        </select>
-                        <button id="fetch-news-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white py-2 px-4 rounded-md">Fetch Latest News</button>
-                    </div>
-                    <div id="news-feed-content" class="text-gray-300 space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                        <p class="text-gray-400">Select a game and fetch news to see the latest updates.</p>
-                    </div>
-                </div>
-            `;
         case "games":
             return `
                 <h1 class="text-3xl font-bold text-white mb-6">My Games</h1>
                 <div id="my-games-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- MODIFIED: Removed AI Button -->
                     ${games.map(game => `
                         <div class="bg-gray-800 rounded-lg shadow-xl p-6 flex flex-col justify-between">
                             <div>
                                 <span class="text-4xl">${game.icon}</span>
                                 <h2 class="text-2xl font-bold text-white mt-4">${game.name}</h2>
                             </div>
-                            <button data-game-id="${game.id}" class="analyze-meta-btn mt-6 w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2 px-4 rounded-md">
-                                ✨ Analyze Meta
-                            </button>
                         </div>
                     `).join('')}
-                </div>
-            `;
-        case "training":
-            return `
-                <h1 class="text-3xl font-bold text-white mb-6">✨ AI Training Planner</h1>
-                <div class="bg-gray-800 rounded-lg shadow-xl p-6">
-                    <form id="training-plan-form">
-                        <div class="space-y-4">
-                            <div>
-                                <label for="training-game-select" class="block text-sm font-medium text-gray-300">Select Game</label>
-                                <select id="training-game-select" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white focus:ring-indigo-500 focus:border-indigo-500">
-                                    <!-- Options injected by JS -->
-                                </select>
-                            </div>
-                            <div>
-                                <label for="training-goal" class="block text-sm font-medium text-gray-300">What do you want to improve?</label>
-                                <input type="text" id="training-goal" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., Improve aerial mechanics in Rocket League">
-                            </div>
-                        </div>
-                        <div class="mt-6">
-                            <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white py-2 px-6 rounded-md">Generate Plan</button>
-                        </div>
-                    </form>
-                    <div id="training-plan-output" class="mt-6 pt-6 border-t border-gray-700 text-gray-300 whitespace-pre-wrap">
-                        <!-- AI plan will be injected here -->
-                    </div>
-                </div>
-            `;
-        case "tournaments":
-            return `
-                <h1 class="text-3xl font-bold text-white mb-6">Find Tournaments</h1>
-                <div class="bg-gray-800 rounded-lg shadow-xl p-6">
-                    <div class="flex items-center space-x-4 mb-6">
-                        <select id="tournament-game-select" class="flex-1 bg-gray-700 border-gray-600 rounded-md shadow-sm text-white focus:ring-indigo-500 focus:border-indigo-500">
-                            <!-- Options injected by JS -->
-                        </select>
-                        <button id="find-tournaments-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white py-2 px-4 rounded-md">Find Tournaments</button>
-                    </div>
-                    <div id="tournament-results" class="space-y-4">
-                        <p class="text-gray-400">Select a game to search for open tournaments.</p>
-                    </div>
                 </div>
             `;
         case "vod":
@@ -1453,10 +988,7 @@ function getPageContent(tabId) {
                             <label for="vod-notes" class="block text-sm font-medium text-gray-300">My Analysis</label>
                             <textarea id="vod-notes" rows="10" class="flex-1 mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white focus:ring-indigo-500 focus:border-indigo-500" placeholder="Write your analysis here..."></textarea>
                             <span id="vod-save-indicator" class="text-xs text-gray-400 mt-1">Notes auto-save.</span>
-                            <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <button id="ai-vod-feedback-btn" class="bg-blue-600 hover:bg-blue-500 text-white py-2 px-4 rounded-md text-sm">✨ Get AI Feedback</button>
-                                <button id="ai-social-post-btn" class="bg-green-600 hover:bg-green-500 text-white py-2 px-4 rounded-md text-sm">✨ Generate Social Post</button>
-                            </div>
+                            <!-- MODIFIED: Removed AI Buttons -->
                         </div>
                     </div>
                 </div>
@@ -1485,12 +1017,7 @@ function getPageContent(tabId) {
                     <div id="dashboard-chart-container" class="chart-container">
                         <canvas id="performance-chart"></canvas>
                     </div>
-                    <div class="mt-4 pt-4 border-t border-gray-700">
-                        <button id="refresh-stats-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2 px-4 rounded-md">
-                            Simulate Auto-Tracker (Refresh Stats)
-                        </button>
-                        <p class="text-xs text-gray-400 text-center mt-2">Simulates fetching new stats from a tracker (for Rocket League).</p>
-                    </div>
+                    <!-- MODIFIED: Removed Auto-Tracker Button -->
                 </div>
 
                 <!-- Live Session -->
@@ -1532,39 +1059,17 @@ function getPageContent(tabId) {
                     <!-- Logged sessions will be injected here -->
                 </div>
             `;
-        case "team":
-            return `
-                <h1 class="text-3xl font-bold text-white mb-6">Team Finder</h1>
-                <div class="bg-gray-800 rounded-lg shadow-xl p-6">
-                    <p class="text-gray-300 mb-4">Use the AI to generate a professional "Looking For Group" (LFG) post based on your Player Card (on the Profile tab).</p>
-                    <div class="flex items-center space-x-4 mb-6">
-                        <select id="team-game-select" class="flex-1 bg-gray-700 border-gray-600 rounded-md shadow-sm text-white focus:ring-indigo-500 focus:border-indigo-500">
-                            <!-- Options injected by JS -->
-                        </select>
-                        <button id="generate-lfg-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white py-2 px-4 rounded-md">✨ Generate LFG Post</button>
-                    </div>
-                    <div id="lfg-post-output" class="text-gray-300">
-                        <p class="text-gray-400">Fill out your Player Card on your Profile, then generate a post.</p>
-                    </div>
-                </div>
-            `;
         default:
             return `<h1 class="text-3xl font-bold text-white">Page Not Found</h1>`;
     }
 }
 
 function populateGameSelects() {
-    const gameSelects = document.querySelectorAll('#news-game-select, #training-game-select, #tournament-game-select, #vod-game, #session-game, #dashboard-game-select, #team-game-select');
+    // MODIFIED: Simplified the list of selects
+    const gameSelects = document.querySelectorAll('#vod-game, #session-game, #dashboard-game-select');
     gameSelects.forEach(select => {
         if (!select) return;
-        // Clear all but the first "All Games" option if it exists
-        const firstOption = select.querySelector('option');
-        if (firstOption && firstOption.value === 'all') {
-            select.innerHTML = `<option value="all">All Games</option>`;
-        } else {
-            select.innerHTML = '';
-        }
-        
+        select.innerHTML = '';
         games.forEach(game => {
             select.innerHTML += `<option value="${game.id}">${game.name}</option>`;
         });
@@ -1596,35 +1101,12 @@ function addPageEventListeners() {
     const saveProfileBtn = document.getElementById("save-profile-btn");
     if (saveProfileBtn) saveProfileBtn.onclick = handleSaveProfile;
 
-    // News
-    const fetchNewsBtn = document.getElementById("fetch-news-btn");
-    if (fetchNewsBtn) fetchNewsBtn.onclick = handleFetchNews;
-
-    // My Games
-    document.querySelectorAll('.analyze-meta-btn').forEach(button => {
-        button.onclick = (e) => handleAnalyzeMeta(e.target.dataset.gameId);
-    });
-
-    // Training
-    const trainingPlanForm = document.getElementById("training-plan-form");
-    if (trainingPlanForm) trainingPlanForm.onsubmit = handleGeneratePlan;
-
-    // Tournaments
-    const findTournamentsBtn = document.getElementById("find-tournaments-btn");
-    if (findTournamentsBtn) findTournamentsBtn.onclick = handleFindTournaments;
-
     // VOD Library
     const addVodForm = document.getElementById("add-vod-form");
     if (addVodForm) addVodForm.onsubmit = handleAddVOD;
 
     const vodNotes = document.getElementById("vod-notes");
     if (vodNotes) vodNotes.onkeyup = handleVODNotesChange;
-    
-    const aiVodFeedbackBtn = document.getElementById("ai-vod-feedback-btn");
-    if (aiVodFeedbackBtn) aiVodFeedbackBtn.onclick = handleAIVODFeedback;
-    
-    const aiSocialPostBtn = document.getElementById("ai-social-post-btn");
-    if (aiSocialPostBtn) aiSocialPostBtn.onclick = handleAISocialPost;
 
     // Tracker
     const startSessionForm = document.getElementById("start-session-form");
@@ -1639,60 +1121,7 @@ function addPageEventListeners() {
     const dashboardGameSelect = document.getElementById("dashboard-game-select");
     if (dashboardGameSelect) dashboardGameSelect.onchange = renderTrackerDashboard;
 
-    const refreshStatsBtn = document.getElementById("refresh-stats-btn");
-    if (refreshStatsBtn) refreshStatsBtn.onclick = handleRefreshStats;
-    
-    // Team Finder
-    const generateLfgBtn = document.getElementById("generate-lfg-btn");
-    if (generateLfgBtn) generateLfgBtn.onclick = handleGenerateLFGPost;
-}
-
-function addGlobalEventListeners() {
-    // Navigation
-    const nav = document.getElementById("main-nav");
-    if (nav) {
-        nav.onclick = (e) => {
-            const link = e.target.closest('.nav-link');
-            if (link) {
-                e.preventDefault();
-                navigateTo(link.dataset.tab);
-            }
-        };
-    }
-    
-    // Modals
-    const openAddEventModalBtn = document.getElementById("open-add-event-modal");
-    if (openAddEventModalBtn) openAddEventModalBtn.onclick = () => showModal("add-event-modal");
-    
-    const cancelEventModalBtn = document.getElementById("cancel-event-modal");
-    if (cancelEventModalBtn) cancelEventModalBtn.onclick = () => hideModal("add-event-modal");
-    
-    const openAddSocialModalBtn = document.getElementById("open-add-social-modal");
-    if (openAddSocialModalBtn) openAddSocialModalBtn.onclick = () => showModal("add-social-modal");
-    
-    const cancelSocialModalBtn = document.getElementById("cancel-social-modal");
-    if (cancelSocialModalBtn) cancelSocialModalBtn.onclick = () => hideModal("add-social-modal");
-    
-    const closeAiMetaModalBtn = document.getElementById("close-ai-meta-modal");
-    if (closeAiMetaModalBtn) closeAiMetaModalBtn.onclick = () => hideModal("ai-meta-modal");
-    
-    const openAddVodModalBtn = document.getElementById("open-add-vod-modal");
-    if (openAddVodModalBtn) openAddVodModalBtn.onclick = () => showModal("add-vod-modal");
-    
-    const cancelVodModalBtn = document.getElementById("cancel-vod-modal");
-    if (cancelVodModalBtn) cancelVodModalBtn.onclick = () => hideModal("add-vod-modal");
-    
-    const closeAiVodModalBtn = document.getElementById("close-ai-vod-modal");
-    if (closeAiVodModalBtn) closeAiVodModalBtn.onclick = () => hideModal("ai-vod-modal");
-    
-    const closeAiSocialModalBtn = document.getElementById("close-ai-social-modal");
-    if (closeAiSocialModalBtn) closeAiSocialModalBtn.onclick = () => hideModal("ai-social-modal");
-    
-    const openStartSessionModalBtn = document.getElementById("open-start-session-modal");
-    if (openStartSessionModalBtn) openStartSessionModalBtn.onclick = () => showModal("start-session-modal");
-    
-    const cancelSessionModalBtn = document.getElementById("cancel-session-modal");
-    if (cancelSessionModalBtn) cancelSessionModalBtn.onclick = () => hideModal("start-session-modal");
+    // --- MODIFIED: Removed all AI and Auto-Tracker listeners ---
 }
 
 
@@ -1702,7 +1131,6 @@ document.addEventListener("DOMContentLoaded", () => {
     renderApp();
     
     // Add event listeners for navigation and static modal buttons
-    // These are safe because they are part of the initial HTML
     const nav = document.getElementById("main-nav");
     if (nav) {
         nav.onclick = (e) => {
@@ -1725,22 +1153,13 @@ document.addEventListener("DOMContentLoaded", () => {
     
     const cancelSocialModalBtn = document.getElementById("cancel-social-modal");
     if (cancelSocialModalBtn) cancelSocialModalBtn.onclick = () => hideModal("add-social-modal");
-    
-    const closeAiMetaModalBtn = document.getElementById("close-ai-meta-modal");
-    if (closeAiMetaModalBtn) closeAiMetaModalBtn.onclick = () => hideModal("ai-meta-modal");
-    
+        
     const openAddVodModalBtn = document.getElementById("open-add-vod-modal");
     if (openAddVodModalBtn) openAddVodModalBtn.onclick = () => showModal("add-vod-modal");
     
     const cancelVodModalBtn = document.getElementById("cancel-vod-modal");
     if (cancelVodModalBtn) cancelVodModalBtn.onclick = () => hideModal("add-vod-modal");
-    
-    const closeAiVodModalBtn = document.getElementById("close-ai-vod-modal");
-    if (closeAiVodModalBtn) closeAiVodModalBtn.onclick = ()d => hideModal("ai-vod-modal");
-    
-    const closeAiSocialModalBtn = document.getElementById("close-ai-social-modal");
-    if (closeAiSocialModalBtn) closeAiSocialModalBtn.onclick = () => hideModal("ai-social-modal");
-    
+        
     const openStartSessionModalBtn = document.getElementById("open-start-session-modal");
     if (openStartSessionModalBtn) openStartSessionModalBtn.onclick = () => showModal("start-session-modal");
     

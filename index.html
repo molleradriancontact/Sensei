@@ -160,19 +160,6 @@
         </div>
     </div>
 
-    <!-- AI Meta Modal -->
-    <div id="ai-meta-modal" class="fixed inset-0 flex items-center justify-center hidden z-50 p-4">
-        <div class="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-lg">
-            <h3 id="ai-meta-title" class="text-lg font-medium leading-6 text-white mb-4">Analyzing Meta...</h3>
-            <div id="ai-meta-content" class="text-gray-300 max-h-96 overflow-y-auto">
-                <!-- AI content will be injected here -->
-            </div>
-            <div class="mt-6 flex justify-end">
-                <button type="button" id="close-ai-meta-modal" class="bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded-md">Close</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Add VOD Modal -->
     <div id="add-vod-modal" class="fixed inset-0 flex items-center justify-center hidden z-50 p-4">
         <div class="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-md">
@@ -199,32 +186,6 @@
                     <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white py-2 px-4 rounded-md">Add Clip</button>
                 </div>
             </form>
-        </div>
-    </div>
-
-    <!-- AI VOD Feedback Modal -->
-    <div id="ai-vod-modal" class="fixed inset-0 flex items-center justify-center hidden z-50 p-4">
-        <div class="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-lg">
-            <h3 class="text-lg font-medium leading-6 text-white mb-4">✨ AI Coach Feedback</h3>
-            <div id="ai-vod-content" class="text-gray-300 max-h-96 overflow-y-auto">
-                <!-- AI feedback will be injected here -->
-            </div>
-            <div class="mt-6 flex justify-end">
-                <button type="button" id="close-ai-vod-modal" class="bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded-md">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- AI Social Post Modal -->
-    <div id="ai-social-modal" class="fixed inset-0 flex items-center justify-center hidden z-50 p-4">
-        <div class="bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-xl">
-            <h3 class="text-lg font-medium leading-6 text-white mb-4">✨ AI Social Post Generator</h3>
-            <div id="ai-social-content" class="text-gray-300 max-h-[60vh] overflow-y-auto space-y-4">
-                <!-- AI social posts will be injected here -->
-            </div>
-            <div class="mt-6 flex justify-end">
-                <button type="button" id="close-ai-social-modal" class="bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded-md">Close</button>
-            </div>
         </div>
     </div>
 
@@ -255,25 +216,14 @@
 
 
     <!-- 3. Load Firebase SDKs (Modular) -->
-    <!-- **** THIS IS THE FIX **** -->
-    <!-- We attach the config to the global 'window' object so app.js can see it without a broken import. -->
-    <script type="module">
-        // These are placeholder stubs. The real Firebase config and auth token
-        // will be provided by the environment this app is running in.
-        // We use these checks to fall back to "demo mode" if Firebase isn't available.
-        
-        // This simulates the firebase config JSON string
+    <script>
+        // Attach the config to the global 'window' object so app.js can see it
+        // In a real deployment, these variables are populated by the environment
         window.__firebase_config_str = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
-        
-        // This simulates the auth token string
         window.__auth_token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        // We DON'T export anything here anymore.
     </script>
     
     <!-- 4. Load the main application JavaScript file -->
-    <!-- 'defer' ensures it runs after the HTML is parsed -->
-    <!-- 'type="module"' allows it to use import/export -->
     <script src="app.js" type="module" defer></script>
 </body>
 </html>
