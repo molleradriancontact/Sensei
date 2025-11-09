@@ -573,7 +573,7 @@ async function handleDeleteVOD(id) {
     
     // Clear review station if the deleted clip was loaded
     const reviewStation = document.getElementById('vod-review-station');
-    if (reviewStation.dataset.currentClipId === id) {
+    if (reviewStation && reviewStation.dataset.currentClipId === id) {
         reviewStation.querySelector('iframe').src = "about:blank";
         reviewStation.querySelector('textarea').value = "";
         reviewStation.querySelector('h3').textContent = "Select a clip to review";
@@ -1165,6 +1165,8 @@ document.addEventListener("DOMContentLoaded", () => {
     
     const cancelSessionModalBtn = document.getElementById("cancel-session-modal");
     if (cancelSessionModalBtn) cancelSessionModalBtn.onclick = () => hideModal("start-session-modal");
+    
+    // --- MODIFIED: Removed listeners for AI modals ---
     
     // Add event listeners for the default page
     addPageEventListeners();
